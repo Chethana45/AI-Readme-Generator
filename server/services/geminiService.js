@@ -1,46 +1,82 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import dotenv from 'dotenv';
-
-dotenv.config();
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 /**
- * Generates a professional README.md using Gemini AI based on repository metadata and structure.
- * @param {Object} repoData - Repository information including name, description, language, and file structure.
- * @returns {Promise<string>} - The generated README content in Markdown format.
+ * Generates a professional README.md using Gemini AI
  */
 export const generateReadme = async (repoData) => {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      throw new Error(
+        "GEMINI_API_KEY is not set in environment variables"
+      );
+    }
+
+    console.log("API Key Loaded:", !!apiKey);
+
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+    });
 
     const prompt = `
-      Act as a world-class technical writer and software documentation expert.
-      Generate a professional and comprehensive README.md for a project with the following details:
+Act as a world-class technical writer and software documentation expert.
 
-      - Repository Name: ${repoData.repoName}
-      - Initial Description: ${repoData.description || 'No description provided.'}
-      - Primary Language: ${repoData.language}
-      - GitHub Stars: ${repoData.stars}
-      - Project Structure:
-      ${JSON.stringify(repoData.fileStructure, null, 2)}
+Generate a professional and comprehensive README.md for the following GitHub project.
 
-      The README.md must include the following sections:
-      1. Project Title
-      2. Description: A detailed and professional explanation of the project.
-      3. Features: Key features extracted or inferred from the file structure.
-      4. Installation: Clear setup instructions based on the detected tech stack.
-      5. Usage: Practical examples of how to use the project.
-      6. Tech Stack: A list of technologies and libraries used.
-      7. Contributing: Guidelines for contributing to the repository.
+Repository Name: ${repoData.repoName}
 
-      Return only the Markdown content. Avoid any meta-talk or conversational filler.
-    `;
+Description:
+${repoData.description || "No description provided"}
+
+Primary Language:
+${repoData.language}
+
+Stars:
+${repoData.stars}
+
+Project Structure:
+${JSON.stringify(repoData.fileStructure, null, 2)}
+
+The README must include:
+
+# Project Title
+
+## Description
+
+## Features
+
+## Installation
+
+## Usage
+
+## Tech Stack
+
+## Contributing
+
+Return ONLY markdown content.
+Do not include explanations outside the README.
+`;
+
+    console.log("Calling Gemini...");
 
     const result = await model.generateContent(prompt);
-    return result.response.text();
+
+    const response = await result.response;
+
+    return response.text();
   } catch (error) {
-    console.error(`[Gemini Service Error]: ${error.message}`);
-    throw new Error('Failed to generate README with Gemini AI');
+    console.error("========== GEMINI ERROR ==========");
+    console.error("Name:", error.name);
+    console.error("Message:", error.message);
+    console.error("Status:", error.status);
+    console.error("Full Error:", error);
+    console.error("==================================");
+
+    throw new Error(
+      error.message || "Failed to generate README with Gemini AI"
+    );
   }
 };
